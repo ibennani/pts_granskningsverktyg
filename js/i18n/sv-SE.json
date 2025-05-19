@@ -213,5 +213,12 @@
   "check_complies": "Stämmer",
   "check_does_not_comply": "Stämmer inte",
   "cannot_change_criteria_if_check_not_compliant": "Kriterier kan inte ändras när kontrollpunkten är markerad 'Stämmer inte'.",
-  "check_marked_as_not_compliant_criteria_passed": "Kontrollpunkten är markerad som 'Stämmer inte'; underliggande kriterier har automatiskt markerats som godkända och visas ej."
+  "check_marked_as_not_compliant_criteria_passed": "Kontrollpunkten är markerad som 'Stämmer inte'; underliggande kriterier har automatiskt markerats som godkända och visas ej.",
+  "what_to_audit_title": "Vad ska du granska?",
+  "rule_selection_instruction": "Välj en färdig regelfil från listan här nere, eller ladda upp en egen fil. När du har valt en fil ser du namnet på den under knapparna.",
+  "upload_custom_rule_file_button": "Ladda upp egen fil",
+  "selected_rule_file_label": "Vald fil:",
+  "error_fetching_rule_index": "Hoppsan! Vi kunde inte ladda listan med färdiga regelfiler.",
+  "error_fetching_rule_file": "Hoppsan! Det gick inte att ladda regelfilen: {fileName}",
+  "no_rule_files_found_in_index": "Det finns inga färdiga regelfiler att välja bland just nu."
 }

@@ -1,9 +1,8 @@
 // js/state.js
 
 const APP_STATE_KEY = 'digitalTillsynAppCentralState';
-const APP_STATE_VERSION = '2.0.0'; // Ny version för store-baserad state
+const APP_STATE_VERSION = '2.0.0'; // Version för store-baserad state
 
-// För att undvika stavfel och centralisera action-typer
 export const ActionTypes = {
     INITIALIZE_NEW_AUDIT: 'INITIALIZE_NEW_AUDIT',
     LOAD_AUDIT_FROM_FILE: 'LOAD_AUDIT_FROM_FILE',
@@ -13,12 +12,12 @@ export const ActionTypes = {
     DELETE_SAMPLE: 'DELETE_SAMPLE',
     SET_AUDIT_STATUS: 'SET_AUDIT_STATUS',
     UPDATE_REQUIREMENT_RESULT: 'UPDATE_REQUIREMENT_RESULT',
-    SET_RULE_FILE_CONTENT: 'SET_RULE_FILE_CONTENT'
+    SET_RULE_FILE_CONTENT: 'SET_RULE_FILE_CONTENT' // NYTT
 };
 
 const initial_state = {
     saveFileVersion: APP_STATE_VERSION,
-    ruleFileContent: null,
+    ruleFileContent: null, // Viktigt att denna är null initialt för nya logiken
     auditMetadata: {
         caseNumber: '',
         actorName: '',
@@ -42,34 +41,31 @@ function get_current_iso_datetime_utc_internal() {
 
 function root_reducer(current_state, action) {
     console.log('[State.js] root_reducer called. Action:', action.type, 'Payload:', action.payload ? JSON.parse(JSON.stringify(action.payload)) : 'No payload');
-    // console.log('[State.js] State BEFORE reduce:', JSON.parse(JSON.stringify(current_state))); // Kan vara mycket output
-
+    
     let new_state_slice;
 
     switch (action.type) {
         case ActionTypes.INITIALIZE_NEW_AUDIT:
             return {
-                ...initial_state,
+                ...current_state, 
                 saveFileVersion: APP_STATE_VERSION,
                 ruleFileContent: action.payload.ruleFileContent,
-                auditStatus: 'not_started',
-                samples: [],
-                auditMetadata: { ...initial_state.auditMetadata },
-                startTime: null,
+                auditStatus: 'not_started', 
+                samples: [], 
+                startTime: null, 
                 endTime: null
+                // Behåll befintlig auditMetadata om det är önskvärt, annars återställ den också:
+                // auditMetadata: { ...initial_state.auditMetadata },
             };
 
         case ActionTypes.LOAD_AUDIT_FROM_FILE:
             if (action.payload && typeof action.payload === 'object') {
-                // Validera versionen av den inladdade filen här om du vill
                 if (action.payload.saveFileVersion && action.payload.saveFileVersion !== APP_STATE_VERSION) {
                     console.warn(`[State.js] LOAD_AUDIT_FROM_FILE: Version mismatch. File version: ${action.payload.saveFileVersion}, App version: ${APP_STATE_VERSION}. Loading anyway but stamping with current app version.`);
-                    // Här kan du lägga till logik för att antingen avvisa filen,
-                    // försöka migrera den, eller bara varna och ladda.
                 }
                 return {
                     ...action.payload,
-                    saveFileVersion: APP_STATE_VERSION
+                    saveFileVersion: APP_STATE_VERSION 
                 };
             }
             console.warn('[State.js] LOAD_AUDIT_FROM_FILE: Invalid payload.', action.payload);
@@ -103,7 +99,7 @@ function root_reducer(current_state, action) {
                 ...current_state,
                 samples: current_state.samples.map(sample =>
                     sample.id === action.payload.sampleId
-                        ? { ...sample, ...action.payload.updatedSampleData, requirementResults: sample.requirementResults }
+                        ? { ...sample, ...action.payload.updatedSampleData, requirementResults: sample.requirementResults } 
                         : sample
                 )
             };
@@ -124,11 +120,13 @@ function root_reducer(current_state, action) {
                 return current_state;
             }
             new_state_slice = { auditStatus: action.payload.status };
-            if (action.payload.status === 'in_progress') {
-                new_state_slice.startTime = current_state.startTime || get_current_iso_datetime_utc_internal();
-                new_state_slice.endTime = null;
-            } else if (action.payload.status === 'locked') {
-                new_state_slice.endTime = current_state.endTime || get_current_iso_datetime_utc_internal();
+            if (action.payload.status === 'in_progress' && !current_state.startTime) { 
+                new_state_slice.startTime = get_current_iso_datetime_utc_internal();
+                new_state_slice.endTime = null; 
+            } else if (action.payload.status === 'locked' && !current_state.endTime) { 
+                new_state_slice.endTime = get_current_iso_datetime_utc_internal();
+            } else if (action.payload.status === 'in_progress' && current_state.auditStatus === 'locked') {
+                new_state_slice.endTime = null; 
             }
             return {
                 ...current_state,
@@ -136,7 +134,7 @@ function root_reducer(current_state, action) {
             };
 
         case ActionTypes.UPDATE_REQUIREMENT_RESULT:
-            if (!action.payload || !action.payload.sampleId || !action.payload.requirementId || action.payload.newRequirementResult === undefined) { // Tillåt null för newRequirementResult
+            if (!action.payload || !action.payload.sampleId || !action.payload.requirementId || action.payload.newRequirementResult === undefined) {
                 console.error('[State.js] UPDATE_REQUIREMENT_RESULT: Invalid payload.', action.payload);
                 return current_state;
             }
@@ -158,14 +156,17 @@ function root_reducer(current_state, action) {
                 })
             };
         
-        case ActionTypes.SET_RULE_FILE_CONTENT:
-            if (!action.payload || typeof action.payload.ruleFileContent !== 'object') {
-                console.error('[State.js] SET_RULE_FILE_CONTENT: Invalid payload. Expected ruleFileContent object.');
-                return current_state;
-            }
+        case ActionTypes.SET_RULE_FILE_CONTENT: 
+            // När en ny regelfil väljs (eller rensas genom att sätta payload.ruleFileContent till null)
+            // ska vi återställa relevant state som om en ny granskning påbörjas med DENNA regelfil.
+            // AuditMetadata kan behållas om det är önskvärt, men samples etc. bör nollställas.
             return {
-                ...current_state,
-                ruleFileContent: action.payload.ruleFileContent
+                ...current_state, // Behåll befintlig auditMetadata och uiSettings
+                ruleFileContent: action.payload.ruleFileContent, // Kan vara null
+                auditStatus: 'not_started',
+                samples: [],
+                startTime: null,
+                endTime: null
             };
 
         default:
@@ -181,7 +182,6 @@ function dispatch(action) {
     }
     try {
         const new_state = root_reducer(internal_state, action);
-        // console.log('[State.js] State AFTER reduce:', JSON.parse(JSON.stringify(new_state))); // Kan vara mycket output
         internal_state = new_state;
         saveStateToSessionStorage(internal_state);
         notify_listeners();
@@ -197,17 +197,16 @@ function getState() {
 function subscribe(listener_function) {
     if (typeof listener_function !== 'function') {
         console.error('[State.js] Listener must be a function.');
-        return () => {};
+        return () => {}; 
     }
     listeners.push(listener_function);
-    return () => {
+    return () => { 
         listeners = listeners.filter(l => l !== listener_function);
     };
 }
 
 function notify_listeners() {
-    // console.log(`[State.js] Notifying ${listeners.length} listeners.`);
-    const currentSnapshot = getState(); // Ta en snapshot för att skicka samma till alla
+    const currentSnapshot = getState(); 
     listeners.forEach(listener => {
         try {
             listener(currentSnapshot);
@@ -221,7 +220,7 @@ function loadStateFromSessionStorage() {
     const serializedState = sessionStorage.getItem(APP_STATE_KEY);
     if (serializedState === null) {
         console.log('[State.js] No state found in sessionStorage. Using initial_state.');
-        return initial_state;
+        return JSON.parse(JSON.stringify(initial_state));
     }
     try {
         const storedState = JSON.parse(serializedState);
@@ -231,12 +230,12 @@ function loadStateFromSessionStorage() {
         } else {
             console.warn(`[State.js] State version mismatch in sessionStorage. Found ${storedState.saveFileVersion}, expected ${APP_STATE_VERSION}. Clearing stored state and using initial_state.`);
             sessionStorage.removeItem(APP_STATE_KEY);
-            return initial_state;
+            return JSON.parse(JSON.stringify(initial_state));
         }
     } catch (e) {
         console.error("[State.js] Could not load state from sessionStorage due to parsing error:", e);
         sessionStorage.removeItem(APP_STATE_KEY);
-        return initial_state;
+        return JSON.parse(JSON.stringify(initial_state));
     }
 }
 
@@ -245,14 +244,13 @@ function saveStateToSessionStorage(state_to_save) {
         const complete_state_to_save = { ...state_to_save, saveFileVersion: APP_STATE_VERSION };
         const serializedState = JSON.stringify(complete_state_to_save);
         sessionStorage.setItem(APP_STATE_KEY, serializedState);
-        // console.log('[State.js] State saved to sessionStorage.');
     } catch (e) {
         console.error("[State.js] Could not save state to sessionStorage:", e);
     }
 }
 
 internal_state = loadStateFromSessionStorage();
-if (internal_state === initial_state && sessionStorage.getItem(APP_STATE_KEY) === null) {
+if (JSON.stringify(internal_state) === JSON.stringify(initial_state) && sessionStorage.getItem(APP_STATE_KEY) === null) {
     saveStateToSessionStorage(internal_state);
 }
 

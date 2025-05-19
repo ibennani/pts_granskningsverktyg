@@ -213,6 +213,13 @@
     "check_complies": "Complies",
     "check_does_not_comply": "Does not comply",
     "cannot_change_criteria_if_check_not_compliant": "Criteria cannot be changed when the control point is marked 'Does not comply'.",
-    "check_marked_as_not_compliant_criteria_passed": "The control point is marked as 'Does not comply'; underlying criteria have been automatically marked as passed and are not shown."
+    "check_marked_as_not_compliant_criteria_passed": "The control point is marked as 'Does not comply'; underlying criteria have been automatically marked as passed and are not shown.",
+    "what_to_audit_title": "What are you auditing?",
+    "rule_selection_instruction": "Pick a ready-made rule file from the list below, or upload your own file. Once you've selected a file, you'll see its name displayed under the buttons.",
+    "upload_custom_rule_file_button": "Upload custom file",
+    "selected_rule_file_label": "Selected file:",
+    "error_fetching_rule_index": "Oops! We couldn't load the list of ready-made rule files.",
+    "error_fetching_rule_file": "Oops! Failed to load the rule file: {fileName}",
+    "no_rule_files_found_in_index": "There are no ready-made rule files to choose from right now."
   }
   
